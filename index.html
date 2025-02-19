@@ -1,116 +1,147 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Osmosis Pool Tick Price</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f0f0f0;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        input, button {
-            margin: 10px 0;
-            padding: 5px;
-        }
-        #result {
-            margin-top: 20px;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      input,
+      button {
+        margin: 10px 0;
+        padding: 5px;
+      }
+      #result {
+        margin-top: 20px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h2>Osmosis Pool Tick Price</h2>
-        <form id="poolForm">
-            <label for="poolId">Pool ID:</label>
-            <input type="text" id="poolId" name="poolId" required>
-            <br>
-            <label for="tick">Tick (optional):</label>
-            <input type="number" id="tick" name="tick">
-            <br>
-            <button type="submit">Get Price</button>
-        </form>
-        <div id="result"></div>
+      <h2>Osmosis Pool Tick Price</h2>
+      <form id="poolForm">
+        <label for="poolId">Pool ID:</label>
+        <input type="text" id="poolId" name="poolId" required />
+        <br />
+        <label for="tick">Tick (optional):</label>
+        <input type="number" id="tick" name="tick" />
+        <br />
+        <button type="submit">Get Price</button>
+        <br />
+        <br />
+        <br />
+        <label for="secret">RPC Proxy passphrase:</label>
+        <input type="text" id="secret" name="secret" value="public" />
+        <br />
+        <label for="rpc">RPC Server:</label>
+        <input
+          type="text"
+          id="rpc"
+          name="rpc"
+          value="https://rpc.osmosis.zone:443"
+        />
+        <br />
+      </form>
+      <div id="result"></div>
     </div>
     <script>
-    const Q96 = BigInt(0x1000000000000000000000000);
+      const Q96 = BigInt(0x1000000000000000000000000);
 
-    function getSqrtRatioAtTick(tick) {
+      function getKey() {
+        return document.getElementById("secret").value;
+      }
+
+      function getRPC() {
+        return document.getElementById("rpc").value;
+      }
+
+      function getSqrtRatioAtTick(tick) {
         if (tick < -887272 || tick > 887272) {
-            throw new Error("TICK");
+          throw new Error("TICK");
         }
 
         let ratio = BigInt(1);
         let sign = 1;
         if (tick < 0) {
-            tick = -tick;
-            sign = -1;
+          tick = -tick;
+          sign = -1;
         }
 
         for (let i = 0; i < tick; i++) {
-            ratio = (ratio * BigInt(1000000000000)) / BigInt(999999999944);
+          ratio = (ratio * BigInt(1000000000000)) / BigInt(999999999944);
         }
 
         if (sign === -1) {
-            ratio = (Q96 * BigInt(1000000000000)) / ratio;
+          ratio = (Q96 * BigInt(1000000000000)) / ratio;
         } else {
-            ratio = ratio * Q96;
+          ratio = ratio * Q96;
         }
 
         return ratio;
-    }
+      }
 
-    async function fetchPoolTick(poolId) {
-        const endpoint = "https://rpc.osmosis.zone:443"; // Replace with Osmosis RPC endpoint
+      async function fetchPoolTick(poolId) {
+        const proxyEndpoint = "http://jasbanza.com:9604"; 
         try {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "osmosis.pool.v1beta1.Query/SpotPrice",
-                    "params": { "pool_id": poolId }
-                })
-            });
-            const data = await response.json();
-            // This is a placeholder since the exact response structure might differ
-            return data.result.tick;
+          const response = await fetch(proxyEndpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-rpc-server": getRPC(),
+              "x-proxy-secret": getKey(),
+            },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "osmosis.pool.v1beta1.Query/SpotPrice",
+              params: { pool_id: poolId },
+            }),
+          });
+          const data = await response.json();
+          // This is a placeholder since the exact response structure might differ
+          return data.result.tick;
         } catch (error) {
-            console.error('Failed to fetch tick:', error);
-            return null;
+          console.error("Failed to fetch tick:", error);
+          return null;
         }
-    }
+      }
 
-    document.getElementById('poolForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        const poolId = document.getElementById('poolId').value;
-        let tick = document.getElementById('tick').value;
+      document
+        .getElementById("poolForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const poolId = document.getElementById("poolId").value;
+          let tick = document.getElementById("tick").value;
 
-        if (!tick) {
+          if (!tick) {
             tick = await fetchPoolTick(poolId);
-        }
+          }
 
-        if (tick !== null) {
+          if (tick !== null) {
             const sqrtPriceX96 = getSqrtRatioAtTick(parseInt(tick));
-            const price = Number(sqrtPriceX96) * Number(sqrtPriceX96) / Number(Q96 * Q96);
-            document.getElementById('result').innerText = `Price at tick ${tick} is approximately: ${price}`;
-        } else {
-            document.getElementById('result').innerText = 'Could not fetch or calculate price.';
-        }
-    });
+            const price =
+              (Number(sqrtPriceX96) * Number(sqrtPriceX96)) / Number(Q96 * Q96);
+            document.getElementById(
+              "result"
+            ).innerText = `Price at tick ${tick} is approximately: ${price}`;
+          } else {
+            document.getElementById("result").innerText =
+              "Could not fetch or calculate price.";
+          }
+        });
     </script>
-</body>
+  </body>
 </html>
