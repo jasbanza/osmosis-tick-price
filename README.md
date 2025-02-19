@@ -10,7 +10,7 @@ This is a simple web page that calculates the price for a given tick in an Osmos
 
 ## 🌐 Live Demo 
 
-Check out the live demo here: **[Osmosis Pool Tick Price Calculator](https://YOUR_USERNAME.github.io/REPO_NAME/)**
+Check out the live demo here: **[Osmosis Pool Tick Price Calculator](https://jasbanza.github.io/osmosis-tick-price/)**
 
 ## 📝 How to Use
 
